@@ -10,7 +10,7 @@ To add this library to your project (with Maven) :
   ```
   <dependency>
       <groupId>fr.sythm</groupId>
-      <artifactId>TKF-GUI</artifactId>
+      <artifactId>tkf-gui</artifactId>
       <version>1.0-SNAPSHOT</version>
   </dependency>
   ```
