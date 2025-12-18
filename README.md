@@ -15,22 +15,4 @@ To add this library to your project (with Maven) :
   </dependency>
   ```
 
-- Inside the \<plugins\> tag, add the following tag :
-
-  ```
-  <plugin>
-      <groupId>org.apache.maven.plugins</groupId>
-      <artifactId>maven-shade-plugin</artifactId>
-      <version>3.5.3</version>
-      <executions>
-          <execution>
-              <phase>package</phase>
-              <goals>
-                  <goal>shade</goal>
-              </goals>
-          </execution>
-      </executions>
-  </plugin>
-  ```
-
 Reload your Maven project and you're ready to go !
