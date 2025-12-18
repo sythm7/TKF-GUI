@@ -122,7 +122,7 @@ public class Button {
     // Custom item name that will be displayed
     private final String displayName;
     // Display name color
-    private Color color;
+    private final Color color;
     // Item description
     private final List<String> lore;
     // Enchantment glint effect ON or OFF
