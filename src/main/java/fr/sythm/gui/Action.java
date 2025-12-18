@@ -13,5 +13,5 @@ public interface Action {
      * @param player The {@link Player} who triggered the button click event
      * @param itemStack The {@link ItemStack} that was clicked on by the {@link Player}
      */
-    public void execute(Player player, ItemStack itemStack);
+    void execute(Player player, ItemStack itemStack);
 }

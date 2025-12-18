@@ -1,5 +1,6 @@
 package fr.sythm.gui;
 
+import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -21,11 +22,11 @@ public class Page {
 
     private static Plugin plugin;
 
-    private String title;
+    private final String title;
 
-    private int rowCount;
+    private final int rowCount;
 
-    private Inventory inventory;
+    private final Inventory inventory;
 
     /**
      * 9 is the number of columns contained into an inventory, it cannot be changed.
@@ -55,9 +56,8 @@ public class Page {
         }
         this.title = title;
         this.rowCount = rowCount;
-
         // Inventory size isn't counted as rows here but as number of Inventory slots, so it's rows * columns.
-        this.inventory = Bukkit.createInventory(new PageHolder(), rowCount * COLUMN_COUNT, this.title);
+        this.inventory = Bukkit.createInventory(new PageHolder(), rowCount * COLUMN_COUNT, Component.text(this.title));
         this.buttonMap = new HashMap<>();
     }
 

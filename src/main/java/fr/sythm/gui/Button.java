@@ -1,6 +1,9 @@
 package fr.sythm.gui;
 
-import org.bukkit.Bukkit;
+import com.google.common.collect.Lists;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.TextColor;
+import org.bukkit.Color;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.entity.Player;
@@ -12,7 +15,6 @@ import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
-import org.checkerframework.checker.units.qual.t;
 
 import java.util.List;
 
@@ -35,6 +37,8 @@ public class Button {
         private final Material material;
         // Custom item name that will be displayed
         private String displayName;
+        // Display name color
+        private Color color;
         // Item description
         private List<String> lore;
         // Enchantment glint effect ON or OFF
@@ -59,6 +63,18 @@ public class Button {
          */
         public Builder withDisplayName(String displayName) {
             this.displayName = displayName;
+            return this;
+        }
+
+        /**
+         * Adds a colored display name to the {@link Builder} configuration.
+         * @param displayName Custom name that will be displayed for an {@link ItemStack}
+         * @param color The colored that will be applied on the displayed name
+         * @return The updated {@link Builder}
+         */
+        public Builder withDisplayName(String displayName, Color color) {
+            this.displayName = displayName;
+            this.color = color;
             return this;
         }
 
@@ -97,25 +113,29 @@ public class Button {
          * @return The {@link Button} instance built with its proper configuration
          */
         public Button build() {
-            return new Button(this.material, this.displayName, this.lore, this.isEnchanted, this.action);
+            return new Button(this.material, this.displayName, this.color, this.lore, this.isEnchanted, this.action);
         }
     }
 
     // In game item name/ID
     private final Material material;
     // Custom item name that will be displayed
-    private String displayName;
+    private final String displayName;
+    // Display name color
+    private Color color;
     // Item description
-    private List<String> lore;
+    private final List<String> lore;
     // Enchantment glint effect ON or OFF
-    private boolean isEnchanted;
+    private final boolean isEnchanted;
     // Custom action on a Button click
-    private Action action;
+    private final Action action;
     // Unique ID assigned to the Button
-    private int buttonID;
+    private final int buttonID;
 
-    private ItemStack itemStack;
-    private ItemMeta itemMeta;
+    private final ItemStack itemStack;
+    private final ItemMeta itemMeta;
+
+    private static Plugin plugin;
 
     /**
      * Private {@link Button} constructor as it would be nonsense to allow the user to use this publicly, because we don't need to initialize
@@ -123,38 +143,55 @@ public class Button {
      * wants to use an option for his {@link Button}.
      * @param material The in game item ID
      * @param displayName Custom name that will be displayed for an {@link ItemStack}
+     * @param color The color that will be applied on the displayed name
      * @param lore The description that will be shown for an {@link ItemStack}
-     * @param isEnchanted Specifies if the {@link ItemStack} will have an enchantment effect displayed on it.
+     * @param isEnchanted Specifies if the {@link ItemStack} will have an enchantment effect displayed on it
      * @param action Specifies the action to be triggered on a {@link Button} click
      */
-    private Button(Material material, String displayName, List<String> lore, boolean isEnchanted, Action action) {
+    private Button(Material material, String displayName, Color color, List<String> lore, boolean isEnchanted, Action action) {
+
         this.material = material;
+        this.itemStack = new ItemStack(material);
+        // Retrieve the ItemMeta (the properties) of an ItemStack, allows us to redefine various options of the ItemStack.
+        this.itemMeta = this.itemStack.getItemMeta();
+
+        // Get the custom item name if specified by the user, otherwise retrieve the default item name
         this.displayName = displayName;
+
+        this.color = color;
+
         this.lore = lore;
         this.isEnchanted = isEnchanted;
         this.action = action;
 
-        this.itemStack = new ItemStack(material);
-        // Retrieve the ItemMeta (the properties) of an ItemStack, allows us to redefine various options of the ItemStack.
-        this.itemMeta = this.itemStack.getItemMeta();
         // Assign a unique ID to this Button.
         this.buttonID = buttonIndexing;
         buttonIndexing++;
 
+        if(plugin == null) {
+            plugin = JavaPlugin.getProvidingPlugin(Button.class);
+        }
+
         // We have to be careful, as the getItemMeta() method is @Nullable
         if(this.itemMeta == null) {
-            Bukkit.getLogger().warning("Material " + material + " has null ItemMeta.");
+            plugin.getLogger().warning("Material " + material + " has null ItemMeta.");
             return;
         }
 
-        // Set the properties of the ItemStack using its corresponding ItemMeta
-        this.itemMeta.setDisplayName(this.displayName);
-        this.itemMeta.setLore(this.lore);
+        // Apply the displayName if specified by the user, then apply the color if specified by the user.
+        this.itemMeta.customName(this.displayName != null ? Component.text(this.displayName).color(this.color != null ? TextColor.color(this.color.asRGB()) : null) : null);
+        // If the lore is specified by the user, transform this.lore (List<String>) into a List of Component (List<Component)
+        List<Component> componentList = this.lore != null ? Lists.transform(this.lore, Component::text) : null;
+
+        // Pass the newly created List<Component> as an argument.
+        this.itemMeta.lore(componentList);
+        // Enable the enchanted effect on the item if this.isEnchanted is true, otherwise it won't change anything.
         this.itemMeta.setEnchantmentGlintOverride(this.isEnchanted);
         /*
-            We need to put the updated ItemMeta back to its corresponding ItemStack, because getItemMeta() gave us a clone ItemMeta,
-            which means it was not assigned to the ItemStack anymore.
-         */
+        We need to put the updated ItemMeta back to its corresponding ItemStack, because getItemMeta() gave us a clone ItemMeta,
+        which means it was not assigned to the ItemStack anymore.
+        */
+        // Set the properties of the ItemStack using its corresponding ItemMeta
         this.itemStack.setItemMeta(this.itemMeta);
     }
 
@@ -167,7 +204,6 @@ public class Button {
          * It's a mandatory operation as it's impossible to register an event without access to the corresponding plugin.
          */
         if(this.action != null) {
-            Plugin plugin = JavaPlugin.getProvidingPlugin(Button.class);
             // Create a new property that will contain our unique buttonID.
             if(KEY == null) {
                 KEY = new NamespacedKey(plugin, "button_id");
@@ -183,61 +219,53 @@ public class Button {
     }
 
     /**
-     * Private inner class, used for creating the {@link Button} event
+     * Private record (a record is a simple class), used for creating the {@link Button} event
      * and automatize the execution of its associated action.
+     * When an event is triggered, it checks if the clicked item was indeed the specified {@link Button}
+     * and if yes, executes the action specified by the user.
+     * @param button The button linked to this {@link Listener}
      */
-    private static class ButtonListener implements Listener {
-
-        private final Button button;
-
-        /**
-         * Initializes the {@link Listener} with its associated {@link Button}
-         * When an event is triggered, it allows to check if the clicked item was indeed the specified {@link Button}
-         * @param button The button linked to this {@link Listener}
-         */
-        public ButtonListener(Button button) {
-            this.button = button;
-        }
-
-        /**
-         * Listens to every {@link InventoryClickEvent} and checks if a {@link Button} was clicked, then if the right {@link Button was clicked},
-         * and automatizes the execution of its associated {@link Action}.
-         * @param event The {@link InventoryClickEvent} that was triggered by a {@link org.bukkit.entity.HumanEntity}
-         */
-        @EventHandler
-        private void onButtonClick(InventoryClickEvent event) {
-
-            // If it's not a Player who clicked, we do nothing
-            if(! (event.getWhoClicked() instanceof Player player)) {
-                return;
-            }
-
-            ItemStack itemStack = event.getCurrentItem();
-
-            // getCurrentItem() is @Nullable, we have to be careful
-            if(itemStack == null) {
-                return;
-            }
-
-            ItemMeta itemMeta = itemStack.getItemMeta();
-
-            // getItemMeta() is @Nullable, we have to be careful
-            if(itemMeta == null) {
-                return;
-            }
-
-            // Retrieve the buttonID that was previously injected into the ItemMeta via the property we created before
-            Integer buttonID = itemMeta.getPersistentDataContainer().get(KEY, PersistentDataType.INTEGER);
-
-            /*
-            If it's null, that means it doesn't contain a buttonID, so it doesn't correspond to a Button built in this class
-            Otherwise, check, if the retrieved buttonID/object and the instance's buttonID/object are the same (that means we got the right Button clicked ! :D)
+    private record ButtonListener(Button button) implements Listener {
+            /**
+             * Listens to every {@link InventoryClickEvent} and checks if a {@link Button} was clicked, then if the right {@link Button was clicked},
+             * and automatizes the execution of its associated {@link Action}.
+             *
+             * @param event The {@link InventoryClickEvent} that was triggered by a {@link org.bukkit.entity.HumanEntity}
              */
-            if(buttonID != null && buttonID == this.button.buttonID && itemStack.equals(this.button.itemStack)) {
-                this.button.action.execute(player, itemStack);
+            @EventHandler
+            private void onButtonClick(InventoryClickEvent event) {
+
+                // If it's not a Player who clicked, we do nothing
+                if (!(event.getWhoClicked() instanceof Player player)) {
+                    return;
+                }
+
+                ItemStack itemStack = event.getCurrentItem();
+
+                // getCurrentItem() is @Nullable, we have to be careful
+                if (itemStack == null) {
+                    return;
+                }
+
+                ItemMeta itemMeta = itemStack.getItemMeta();
+
+                // getItemMeta() is @Nullable, we have to be careful
+                if (itemMeta == null) {
+                    return;
+                }
+
+                // Retrieve the buttonID that was previously injected into the ItemMeta via the property we created before
+                Integer buttonID = itemMeta.getPersistentDataContainer().get(KEY, PersistentDataType.INTEGER);
+
+                /*
+                If it's null, that means it doesn't contain a buttonID, so it doesn't correspond to a Button built in this class
+                Otherwise, check, if the retrieved buttonID/object and the instance's buttonID/object are the same (that means we got the right Button clicked ! :D)
+                 */
+                if (buttonID != null && buttonID == this.button.buttonID && itemStack.equals(this.button.itemStack)) {
+                    this.button.action.execute(player, itemStack);
+                }
             }
         }
-    }
 
     /**
      * Redefined in case {@link java.util.Map} is used later, to prevent comparison problems inside the {@link java.util.Map}
@@ -268,38 +296,6 @@ public class Button {
                 + (this.displayName != null ? this.displayName.hashCode() : 0)
                 + this.itemStack.hashCode()
                 + Boolean.hashCode(this.isEnchanted));
-    }
-
-    /**
-     * Get the {@link Material}
-     * @return The {@link Material} used in the {@link Button}
-     */
-    public Material getMaterial() {
-        return material;
-    }
-
-    /**
-     * Get the displayed name
-     * @return The custom item name associated with this {@link Button}
-     */
-    public String getDisplayName() {
-        return displayName;
-    }
-
-    /**
-     * Get the description
-     * @return The description associated with this {@link Button}
-     */
-    public List<String> getLore() {
-        return lore;
-    }
-
-    /**
-     * Get if an enchantment effect is applied or not
-     * @return The boolean associated with the effect activation
-     */
-    public boolean isEnchanted() {
-        return isEnchanted;
     }
 
     /**
