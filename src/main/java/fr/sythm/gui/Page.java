@@ -75,7 +75,7 @@ public class Page {
         this.buttonMap.put(button, pos);
 
         // Register the button event and its corresponding action (if one was specified)
-        button.registerEvent();
+        button.registerEvent(new Button.ButtonListener(button));
 
         // Add the item contained in the Button into the Inventory
         this.inventory.setItem(pos, button.getItemStack());
