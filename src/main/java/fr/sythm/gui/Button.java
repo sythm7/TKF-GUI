@@ -38,28 +38,42 @@ public class Button {
     // Used for specific use case (for example, a UsableItem can disable clicks from inventory)
     private static NamespacedKey CLICKABLE_ON_INVENTORY_KEY;
 
-    /* We initialize a Map and instead of registering events for each button created, we only register 1 event,
-    and when the event is triggered we retrieve the Action corresponding to the id of the clicked Button
+    /**
+     * We initialize a Map and instead of registering events for each button created, we only register 1 event,
+     * and when the event is triggered we retrieve the Action corresponding to the id of the clicked Button
      */
     protected static Map<Integer, Action> buttonIdActionMap = new HashMap<>();
 
     /**
      * This generic class is used to create a {@link Button} in the simplest way, using a Builder Pattern.
-     * The purpose of this generic class is to be extended for a specific use case (see {@link Button.Builder} & {@link UsableItem.Builder})
+     * The purpose of this generic class is to be extended for a specific use case (see {@link Button.Builder} and {@link UsableItem.Builder})
+     * @param <T> The Builder inheriting {@link GenericBuilder}
      */
     protected static abstract class GenericBuilder<T extends  GenericBuilder<T>> {
 
-        // In game item name/ID
+        /**
+         * In game item name/ID
+         */
         protected final Material material;
-        // Custom item name that will be displayed
+        /**
+         * Custom item name that will be displayed
+         */
         protected String displayName;
-        // Display name color
+        /**
+         * Display name color
+         */
         protected Color color;
-        // Item description
+        /**
+         * Item description
+         */
         protected List<String> lore;
-        // Enchantment glint effect ON or OFF
+        /**
+         * Enchantment glint effect ON or OFF
+         */
         protected boolean isEnchanted;
-        // Custom action on a Button click
+        /**
+         * Custom action on a Button click
+         */
         protected Action action;
 
         /**
@@ -72,6 +86,10 @@ public class Button {
             this.isEnchanted = false;
         }
 
+        /**
+         * Cast the {@link GenericBuilder} instance into the type {@link T} of the calling subclass
+         * @return The instance inheriting {@link GenericBuilder}
+         */
         @SuppressWarnings("unchecked")
         private T self() {
             return (T) this;
@@ -168,10 +186,14 @@ public class Button {
     private final Action action;
     // Unique ID assigned to the Button
     private final int buttonID;
-
+    // The ItemStack contained in that Button
     private final ItemStack itemStack;
+    // The ItemMeta contained in that Button
     private final ItemMeta itemMeta;
 
+    /**
+     * The plugin instance, used to register events
+     */
     protected static Plugin plugin;
 
     /**
@@ -283,7 +305,11 @@ public class Button {
         return buttonIdActionMap.get(buttonID);
     }
 
-
+    /**
+     * Get the ID of a {@link Button} contained into an {@link ItemStack} if it contains one
+     * @param itemStack The {@link ItemStack} in which an ID will be searched
+     * @return An ID, if one is found, otherwise null
+     */
     @Nullable
     protected static Integer getButtonID(ItemStack itemStack) {
         // itemStack can be null, we have to be careful
@@ -311,6 +337,11 @@ public class Button {
     public static class ButtonListener implements Listener {
 
         /**
+         * Creates a new {@link ButtonListener}.
+         */
+        public ButtonListener() {}
+
+        /**
          * Listens to every {@link InventoryClickEvent} and checks if a {@link Button} was clicked, then if the right {@link Button was clicked},
          * and automatizes the execution of its associated {@link Action}.
          *
@@ -318,6 +349,8 @@ public class Button {
          */
         @EventHandler
         public void onButtonClick(InventoryClickEvent event) {
+
+
 
             // If it's not a Player who clicked, we do nothing
             if (!(event.getWhoClicked() instanceof Player player)) {
