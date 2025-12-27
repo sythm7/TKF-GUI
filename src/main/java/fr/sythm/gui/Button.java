@@ -6,14 +6,22 @@ import net.kyori.adventure.text.format.TextColor;
 import org.bukkit.*;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
+import org.bukkit.event.inventory.ClickType;
 import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.inventory.InventoryCreativeEvent;
+import org.bukkit.event.player.PlayerDropItemEvent;
+import org.bukkit.event.player.PlayerSwapHandItemsEvent;
+import org.bukkit.event.server.PluginDisableEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import javax.annotation.Nullable;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -25,18 +33,21 @@ public class Button {
     // Makes a unique ID everytime a Button is created.
     private static int buttonIndexing = 0;
     // Used for creating a custom attribute where we can put the Button ID in.
-    private static NamespacedKey KEY;
+    private static NamespacedKey BUTTON_ID_KEY;
+
+    // Used for specific use case (for example, a UsableItem can disable clicks from inventory)
+    private static NamespacedKey CLICKABLE_ON_INVENTORY_KEY;
 
     /* We initialize a Map and instead of registering events for each button created, we only register 1 event,
     and when the event is triggered we retrieve the Action corresponding to the id of the clicked Button
      */
-    private static Map<Integer, Action> buttonIdActionMap;
+    protected static Map<Integer, Action> buttonIdActionMap = new HashMap<>();
 
     /**
      * This generic class is used to create a {@link Button} in the simplest way, using a Builder Pattern.
      * The purpose of this generic class is to be extended for a specific use case (see {@link Button.Builder} & {@link UsableItem.Builder})
      */
-    protected static class GenericBuilder<T extends  GenericBuilder<T>> {
+    protected static abstract class GenericBuilder<T extends  GenericBuilder<T>> {
 
         // In game item name/ID
         protected final Material material;
@@ -161,7 +172,7 @@ public class Button {
     private final ItemStack itemStack;
     private final ItemMeta itemMeta;
 
-    private static Plugin plugin;
+    protected static Plugin plugin;
 
     /**
      * Protected {@link Button} constructor as it would be nonsense to allow the user to use this publicly, because we don't need to initialize
@@ -194,8 +205,30 @@ public class Button {
         this.buttonID = buttonIndexing;
         buttonIndexing++;
 
+        /*
+         * Retrieve the plugin instance by finding from which plugin this class is executed, then register the Button event.
+         * It's a mandatory operation as it's impossible to register an event without access to the corresponding plugin.
+         */
         if(plugin == null) {
             plugin = JavaPlugin.getProvidingPlugin(Button.class);
+            // Register the Listener common to every Button. This operation is called only once.
+            plugin.getServer().getPluginManager().registerEvents(new ButtonListener(), plugin);
+            // Create a new property that will contain our uniques buttonIDs.
+            BUTTON_ID_KEY = new NamespacedKey(plugin, "button_id");
+            // Create a new property that will specify if we want to enable clicks from inventory or not
+            CLICKABLE_ON_INVENTORY_KEY = new NamespacedKey(plugin, "clickable_on_inventory");
+        }
+
+        // Inject the BUTTON_ID_KEY and CLICKABLE_ON_INVENTORY_KEY into the ItemMeta
+        this.itemMeta.getPersistentDataContainer().set(BUTTON_ID_KEY, PersistentDataType.INTEGER, this.buttonID);
+        // 'true' means we want to enable clicks from inventory by default
+        this.itemMeta.getPersistentDataContainer().set(CLICKABLE_ON_INVENTORY_KEY, PersistentDataType.BOOLEAN, true);
+
+        // Update the ItemMeta contained in this ItemStack
+        this.itemStack.setItemMeta(this.itemMeta);
+
+        if(this.action != null) {
+            buttonIdActionMap.put(this.buttonID, this.action);
         }
 
         // Apply the displayName if specified by the user, then apply the color if specified by the user.
@@ -216,27 +249,57 @@ public class Button {
     }
 
     /**
-     * Registers the {@link Button} event and its corresponding action, if one was specified.
-     * @param listener The {@link Listener} that will be registered
+     * Denies the {@link Button} from being clicked through the inventory
+     * Most useful for the subclasses (ref {@link UsableItem})
      */
-    protected void registerEvent(ButtonListener listener) {
-        /*
-         * Retrieve the plugin instance by finding from which plugin this class is executed, then register the Button event.
-         * It's a mandatory operation as it's impossible to register an event without access to the corresponding plugin.
-         */
-        if(this.action != null) {
-            // Create a new property that will contain our unique buttonID.
-            if(KEY == null) {
-                KEY = new NamespacedKey(plugin, "button_id");
-            }
+    public void disableInventoryClick() {
+        // 'false' means we want to disable clicks from inventory
+        this.itemMeta.getPersistentDataContainer().set(CLICKABLE_ON_INVENTORY_KEY, PersistentDataType.BOOLEAN, false);
+        this.itemStack.setItemMeta(this.itemMeta);
+    }
 
-            // Inject the newly created property into the ItemMeta
-            this.itemMeta.getPersistentDataContainer().set(KEY, PersistentDataType.INTEGER, this.buttonID);
-            // Update the ItemMeta contained in this ItemStack
-            this.itemStack.setItemMeta(this.itemMeta);
-            // Finally, register our event and its associated Action into spigot
-            plugin.getServer().getPluginManager().registerEvents(listener, plugin);
+    /**
+     * Allows the {@link Button} to be clicked through the inventory
+     */
+    public void enableInventoryClick() {
+        // 'true' means we want to enable clicks from inventory
+        this.itemMeta.getPersistentDataContainer().set(CLICKABLE_ON_INVENTORY_KEY, PersistentDataType.BOOLEAN, true);
+        this.itemStack.setItemMeta(this.itemMeta);
+    }
+
+    /**
+     * Gets the {@link Action} related to an {@link ItemStack}, if one exists
+     * @param itemStack The {@link ItemStack} for which an {@link Action} can be related
+     * @return An {@link Action} if one is found, otherwise null
+     */
+    @Nullable
+    protected static Action getAction(ItemStack itemStack) {
+
+        Integer buttonID = getButtonID(itemStack);
+
+        if(buttonID == null) return null;
+
+        // Return the Action corresponding to the buttonID if one exists, otherwise return null
+        return buttonIdActionMap.get(buttonID);
+    }
+
+
+    @Nullable
+    protected static Integer getButtonID(ItemStack itemStack) {
+        // itemStack can be null, we have to be careful
+        if (itemStack == null) return null;
+
+        ItemMeta itemMeta = itemStack.getItemMeta();
+
+        // There can be some cases where an itemMeta is null
+        if(itemMeta == null) {
+            return null;
         }
+
+        /* Return the buttonID that was previously injected into the ItemMeta via the property we created before.
+        Will return null if the specified ItemStack is not a Button, because it won't have the BUTTON_ID_KEY.
+         */
+        return itemMeta.getPersistentDataContainer().get(BUTTON_ID_KEY, PersistentDataType.INTEGER);
     }
 
     /**
@@ -245,17 +308,7 @@ public class Button {
      * When an event is triggered, it checks if the clicked item was indeed the specified {@link Button}
      * and if yes, executes the action specified by the user.
      */
-    protected static class ButtonListener implements Listener {
-
-        private final Button button;
-
-        /**
-         * Initializes a {@link ButtonListener}
-         * @param button The button linked to this {@link Listener}
-         */
-        public ButtonListener(Button button) {
-            this.button = button;
-        }
+    public static class ButtonListener implements Listener {
 
         /**
          * Listens to every {@link InventoryClickEvent} and checks if a {@link Button} was clicked, then if the right {@link Button was clicked},
@@ -271,50 +324,117 @@ public class Button {
                 return;
             }
 
+            player.sendMessage("Curseur : " + event.getCursor().getType());
+
             ItemStack itemStack = event.getCurrentItem();
 
-            if(this.isButtonClicked(itemStack)) {
+            Integer buttonID = getButtonID(itemStack);
+
+            // If the ItemStack is not a Button we leave
+            if(buttonID == null) {
+                return;
+            }
+
+            Boolean clickableOnInventory = itemStack.getItemMeta()
+                    .getPersistentDataContainer()
+                            .get(CLICKABLE_ON_INVENTORY_KEY, PersistentDataType.BOOLEAN);
+
+            // That means this button has disabled clicks from inventory
+            if(Boolean.FALSE.equals(clickableOnInventory)) {
+                return;
+            }
+
+            // We cancel the event and deny any item duplication
+            event.setCancelled(true);
+            //player.setItemOnCursor(null);
+            player.updateInventory();
+
+            Action action = getAction(itemStack);
+
+            // getAction() is @Nullable
+            if(action != null) {
+
+                switch(event.getClick()) {
+
+                    /* If we left-click or right-click, we execute the action
+                    There is a special case where in creative game mode, event.getClick() will
+                    always return 'CREATIVE'
+                     */
+                    case ClickType.LEFT, ClickType.RIGHT, ClickType.CREATIVE, ClickType.SHIFT_LEFT, ClickType.SHIFT_RIGHT -> {
+                        action.execute(player, itemStack);
+                    }
+                }
+            }
+        }
+
+        /**
+         * Denies the {@link Player} from swapping a {@link Button} to his offhand
+         * @param event The {@link PlayerSwapHandItemsEvent} which was triggered
+         */
+        @EventHandler
+        public void onButtonSwapHand(PlayerSwapHandItemsEvent event) {
+            ItemStack mainHandItem = event.getMainHandItem();
+
+            ItemStack offHandItem = event.getOffHandItem();
+
+            if(getButtonID(mainHandItem) != null || getButtonID(offHandItem) != null) {
                 event.setCancelled(true);
-                Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                    this.executeAction(player, itemStack);
-                }, 5);
             }
         }
 
         /**
-         * Checks if the clicked {@link ItemStack} is a {@link Button}
-         * @param itemStack The {@link ItemStack} that was clicked
-         * @return {@literal true} true if the right {@link ItemStack} was clicked, otherwise false
+         * Denies the {@link Player} from dropping a {@link Button} from an inventory
+         * @param event The {@link PlayerDropItemEvent} which was triggered
          */
-        protected boolean isButtonClicked(ItemStack itemStack) {
-            // itemStack can be null, we have to be careful
-            if (itemStack == null) return false;
+        @EventHandler
+        public void onButtonDrop(PlayerDropItemEvent event) {
 
-            ItemMeta itemMeta = itemStack.getItemMeta();
+            Player player = event.getPlayer();
 
-            // Retrieve the buttonID that was previously injected into the ItemMeta via the property we created before
-            Integer buttonID = itemMeta.getPersistentDataContainer().get(KEY, PersistentDataType.INTEGER);
+            ItemStack itemStack = event.getItemDrop().getItemStack();
 
-            /*
-            If it's null, that means it doesn't contain a buttonID, so it doesn't correspond to a Button
-            Otherwise, check, if the retrieved buttonID/object and the instance's buttonID/object are the same (that means we got the right Button clicked ! :D)
-             */
-            if (buttonID != null && buttonID == this.button.buttonID && itemStack.equals(this.button.itemStack)) {
-                return true;
+            if(getButtonID(itemStack) != null) {
+                event.setCancelled(true);
             }
-            return false;
         }
 
         /**
-         * Makes the {@link Player} executes the {@link Action} related to the clicked {@link ItemStack}
-         * @param player The {@link Player} related to the {@link ItemStack}
-         * @param itemStack The {@link ItemStack} that was clicked
+         * Denies the {@link Player} from having unexpected interactions with a {@link Button}
+         * while being in creative mode
+         * @param event The {@link InventoryCreativeEvent} which was triggered
          */
-        protected void executeAction(Player player, ItemStack itemStack) {
-            this.button.action.execute(player, itemStack);
+        @EventHandler
+        public void onCreativeButtonInteract(InventoryCreativeEvent event) {
+
+            if(! (event.getWhoClicked() instanceof Player player)) {
+                return;
+            }
+
+            ItemStack current = event.getCurrentItem();
+            ItemStack cursor  = event.getCursor();
+
+            Integer id = getButtonID(cursor);
+            if (id == null) id = getButtonID(current);
+
+            if (id != null) {
+                event.setCancelled(true);
+                player.updateInventory();
+            }
+        }
+
+        /**
+         * Correctly reset things when the plugin including this library disables itself
+         * and avoid problems when reloading plugins
+         * @param event The {@link PluginDisableEvent} which was triggered
+         */
+        @EventHandler
+        public void onPluginDisable(PluginDisableEvent event) {
+            // Unregister all events related to this Listener
+            HandlerList.unregisterAll(this);
+            // Clear the <ButtonId, Action> HashMap
+            buttonIdActionMap.clear();
         }
     }
-
 
 
     /**
