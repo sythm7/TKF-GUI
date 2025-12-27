@@ -3,9 +3,11 @@ package fr.sythm.gui;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryDragEvent;
+import org.bukkit.event.server.PluginDisableEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.plugin.Plugin;
@@ -73,9 +75,6 @@ public class Page {
             throw new IndexOutOfBoundsException("Button position is out of range. " + pos + " >= " + rowCount * COLUMN_COUNT);
         }
         this.buttonMap.put(button, pos);
-
-        // Register the button event and its corresponding action (if one was specified)
-        button.registerEvent();
 
         // Add the item contained in the Button into the Inventory
         this.inventory.setItem(pos, button.getItemStack());
@@ -147,6 +146,17 @@ public class Page {
                 return;
             }
             event.setCancelled(true);
+        }
+
+        /**
+         * Correctly reset things when the plugin including this library disables itself
+         * and avoid problems when reloading plugins
+         * @param event The {@link PluginDisableEvent} which was triggered
+         */
+        @EventHandler
+        public void onPluginDisable(PluginDisableEvent event) {
+            // Unregister all events related to this Listener
+            HandlerList.unregisterAll(this);
         }
     }
 
