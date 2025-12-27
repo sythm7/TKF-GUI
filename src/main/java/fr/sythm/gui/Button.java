@@ -350,14 +350,10 @@ public class Button {
         @EventHandler
         public void onButtonClick(InventoryClickEvent event) {
 
-
-
             // If it's not a Player who clicked, we do nothing
             if (!(event.getWhoClicked() instanceof Player player)) {
                 return;
             }
-
-            player.sendMessage("Curseur : " + event.getCursor().getType());
 
             ItemStack itemStack = event.getCurrentItem();
 
@@ -379,7 +375,6 @@ public class Button {
 
             // We cancel the event and deny any item duplication
             event.setCancelled(true);
-            //player.setItemOnCursor(null);
             player.updateInventory();
 
             Action action = getAction(itemStack);
