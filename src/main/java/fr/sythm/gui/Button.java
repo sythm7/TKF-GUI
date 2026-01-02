@@ -1,6 +1,7 @@
 package fr.sythm.gui;
 
 import com.google.common.collect.Lists;
+import net.kyori.adventure.sound.Sound;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.TextColor;
 import org.bukkit.*;
@@ -88,7 +89,7 @@ public class Button {
 
         /**
          * Cast the {@link GenericBuilder} instance into the type {@link T} of the calling subclass
-         * @return The instance inheriting {@link GenericBuilder}
+         * @return The instance {@link T} inheriting {@link GenericBuilder}
          */
         @SuppressWarnings("unchecked")
         private T self() {
@@ -96,9 +97,9 @@ public class Button {
         }
 
         /**
-         * Adds a display name to the {@link GenericBuilder} configuration.
+         * Adds a display name to the {@link T} Builder configuration.
          * @param displayName Custom name that will be displayed for an {@link ItemStack}
-         * @return The updated {@link GenericBuilder}
+         * @return The updated {@link T} Builder
          */
         public T withDisplayName(String displayName) {
             this.displayName = displayName;
@@ -106,10 +107,10 @@ public class Button {
         }
 
         /**
-         * Adds a colored display name to the {@link GenericBuilder} configuration.
+         * Adds a colored display name to the {@link T} Builder configuration.
          * @param displayName Custom name that will be displayed for an {@link ItemStack}
-         * @param color The colored that will be applied on the displayed name
-         * @return The updated {@link GenericBuilder}
+         * @param color The color that will be applied on the displayed name
+         * @return The updated {@link T} Builder
          */
         public T withDisplayName(String displayName, Color color) {
             this.displayName = displayName;
@@ -118,9 +119,9 @@ public class Button {
         }
 
         /**
-         * Adds a description to the {@link GenericBuilder} configuration.
+         * Adds a description to the {@link T} Builder configuration.
          * @param lore The description that will be shown for an {@link ItemStack}
-         * @return The updated {@link GenericBuilder}
+         * @return The updated {@link T} Builder
          */
         public T withLore(List<String> lore) {
             this.lore = lore;
@@ -128,9 +129,9 @@ public class Button {
         }
 
         /**
-         * Specifies the usage of the enchanted effect into the {@link GenericBuilder} configuration.
+         * Specifies the usage of the enchanted effect into the {@link T} Builder configuration.
          * @param isEnchanted Specifies if the {@link ItemStack} will have an enchantment effect displayed on it.
-         * @return The updated {@link GenericBuilder}
+         * @return The updated {@link T} Builder
          */
         public T withEnchantedEffect(boolean isEnchanted) {
             this.isEnchanted = isEnchanted;
@@ -140,7 +141,7 @@ public class Button {
         /**
          * Adds an {@link Action} specified by the user. It can be either a {@link NavigationAction} or any other custom {@link Action} implemented by the user.
          * @param action Specifies the action to be triggered on a {@link Button} click
-         * @return The updated {@link GenericBuilder}
+         * @return The updated {@link T} Builder
          */
         public T withAction(Action action) {
             this.action = action;
@@ -173,23 +174,23 @@ public class Button {
     }
 
     // In game item name/ID
-    private final Material material;
+    private Material material;
     // Custom item name that will be displayed
-    private final String displayName;
+    private String displayName;
     // Display name color
-    private final Color color;
+    private Color color;
     // Item description
-    private final List<String> lore;
+    private List<String> lore;
     // Enchantment glint effect ON or OFF
-    private final boolean isEnchanted;
+    private boolean isEnchanted;
     // Custom action on a Button click
     private final Action action;
     // Unique ID assigned to the Button
     private final int buttonID;
     // The ItemStack contained in that Button
-    private final ItemStack itemStack;
+    private ItemStack itemStack;
     // The ItemMeta contained in that Button
-    private final ItemMeta itemMeta;
+    private ItemMeta itemMeta;
 
     /**
      * The plugin instance, used to register events
@@ -200,12 +201,13 @@ public class Button {
      * Protected {@link Button} constructor as it would be nonsense to allow the user to use this publicly, because we don't need to initialize
      * every attribute of this class. Instead, the user has to use the {@link GenericBuilder} class because it allows him to decide whenever he
      * wants to use an option for his {@link Button}.
-     * @param material The in game item ID
+     *
+     * @param material    The in game item ID
      * @param displayName Custom name that will be displayed for an {@link ItemStack}
-     * @param color The color that will be applied on the displayed name
-     * @param lore The description that will be shown for an {@link ItemStack}
+     * @param color       The color that will be applied on the displayed name
+     * @param lore        The description that will be shown for an {@link ItemStack}
      * @param isEnchanted Specifies if the {@link ItemStack} will have an enchantment effect displayed on it
-     * @param action Specifies the action to be triggered on a {@link Button} click
+     * @param action      Specifies the action to be triggered on a {@link Button} click
      */
     protected Button(Material material, String displayName, Color color, List<String> lore, boolean isEnchanted, Action action) {
 
@@ -268,6 +270,116 @@ public class Button {
         */
         // Set the properties of the ItemStack using its corresponding ItemMeta
         this.itemStack.setItemMeta(this.itemMeta);
+    }
+
+    /**
+     * Changes the {@link Material} displayed for this {@link Button}.
+     * You have to call {@link Page#updateButton(Button)} after calling this method,
+     * otherwise you won't see any change.
+     * @param material The {@link Material} to set
+     */
+    public void setIcon(Material material) {
+        this.itemStack = this.itemStack.withType(material);
+        this.material = material;
+        this.itemMeta = this.itemStack.getItemMeta();
+    }
+
+    /**
+     * Updates the display name of this {@link Button}
+     * You have to call {@link Page#updateButton(Button)} after calling this method,
+     * otherwise you won't see any change.
+     * @param displayName The display name to set
+     */
+    public void setDisplayName(String displayName) {
+        this.setDisplayName(displayName, null);
+    }
+
+    /**
+     * Updates the display name of this {@link Button}, with a chosen {@link Color}
+     * You have to call {@link Page#updateButton(Button)} after calling this method,
+     * otherwise you won't see any change.
+     * @param displayName The display name to set
+     * @param color The {@link Color} to set
+     */
+    public void setDisplayName(String displayName, Color color) {
+        this.itemMeta.customName(color != null ? Component.text(displayName).color(TextColor.color(color.asRGB())) : Component.text(displayName));
+        this.itemStack.setItemMeta(this.itemMeta);
+        this.displayName = displayName;
+        this.color = color;
+    }
+
+    /**
+     * Updates the lore of this {@link Button}
+     * You have to call {@link Page#updateButton(Button)} after calling this method,
+     * otherwise you won't see any change.
+     * @param lore The lore to be set
+     */
+    public void setLore(List<String> lore) {
+
+        List<Component> componentList = Lists.transform(lore, Component::text);
+        this.itemMeta.lore(componentList);
+        this.itemStack.setItemMeta(this.itemMeta);
+        this.lore = lore;
+    }
+
+    /**
+     * Enables or disables the enchantment effect on this {@link Button}
+     * You have to call {@link Page#updateButton(Button)} after calling this method,
+     * otherwise you won't see any change.
+     * @param isEnchanted true for showing the enchantment effect, false otherwise
+     */
+    public void setEnchanted(boolean isEnchanted) {
+        this.itemMeta.setEnchantmentGlintOverride(isEnchanted);
+        this.itemStack.setItemMeta(this.itemMeta);
+        this.isEnchanted = isEnchanted;
+    }
+
+    /**
+     * Gets the displayed name
+     * @return displayed name
+     */
+    public String getDisplayName() {
+        return displayName;
+    }
+
+    /**
+     * Gets the {@link Button} material
+     * @return The {@link Material}
+     */
+    public Material getMaterial() {
+        return material;
+    }
+
+    /**
+     * Gets the displayed name color
+     * @return The {@link Color}
+     */
+    public Color getColor() {
+        return color;
+    }
+
+    /**
+     * Gets the displayed lore
+     * @return The lore
+     */
+    public List<String> getLore() {
+        return lore;
+    }
+
+    /**
+     * Gets the enchanted effect on the {@link Button}
+     * @return true if the {@link Button} has an enchanted effect, false otherwise
+     */
+    public boolean isEnchanted() {
+        return isEnchanted;
+    }
+
+    /**
+     * Gets the {@link Action} assigned to the {@link Button}
+     * @return The {@link Action}
+     */
+    public Action getAction() {
+        return action;
     }
 
     /**
@@ -489,11 +601,7 @@ public class Button {
      */
     @Override
     public int hashCode() {
-        return 31 * (this.material.hashCode()
-                + (this.lore != null ? this.lore.hashCode() : 0)
-                + (this.displayName != null ? this.displayName.hashCode() : 0)
-                + this.itemStack.hashCode()
-                + Boolean.hashCode(this.isEnchanted));
+        return 31 * Integer.hashCode(this.buttonID);
     }
 
     /**

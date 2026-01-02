@@ -80,6 +80,18 @@ public class Page {
         this.inventory.setItem(pos, button.getItemStack());
     }
 
+    public void updateButton(Button button) {
+
+        Integer pos = buttonMap.get(button);
+
+        if(pos == null) {
+            plugin.getSLF4JLogger().warn("The button '{}' is not in the page '{}'.", button.getDisplayName(), this.title);
+            return;
+        }
+
+        this.inventory.setItem(pos, button.getItemStack());
+    }
+
     /**
      * Get the {@link Inventory} contained in the {@link Page}.
      * For example, allows the user to open an {@link Inventory} after having built a {@link Page}.
