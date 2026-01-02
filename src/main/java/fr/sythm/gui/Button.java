@@ -1,7 +1,6 @@
 package fr.sythm.gui;
 
 import com.google.common.collect.Lists;
-import net.kyori.adventure.sound.Sound;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.TextColor;
 import org.bukkit.*;
@@ -500,9 +499,7 @@ public class Button {
                     There is a special case where in creative game mode, event.getClick() will
                     always return 'CREATIVE'
                      */
-                    case ClickType.LEFT, ClickType.RIGHT, ClickType.CREATIVE, ClickType.SHIFT_LEFT, ClickType.SHIFT_RIGHT -> {
-                        action.execute(player, itemStack);
-                    }
+                    case ClickType.LEFT, ClickType.RIGHT, ClickType.CREATIVE, ClickType.SHIFT_LEFT, ClickType.SHIFT_RIGHT -> action.execute(player, itemStack);
                 }
             }
         }
