@@ -14,6 +14,7 @@ import org.bukkit.event.inventory.InventoryCreativeEvent;
 import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.event.player.PlayerSwapHandItemsEvent;
 import org.bukkit.event.server.PluginDisableEvent;
+import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
@@ -29,20 +30,6 @@ import java.util.Map;
  * This class transforms a simple {@link ItemStack} in a clickable {@link Button} with its own customized actions.
  */
 public class Button {
-
-    // Makes a unique ID everytime a Button is created.
-    private static int buttonIndexing = 0;
-    // Used for creating a custom attribute where we can put the Button ID in.
-    private static NamespacedKey BUTTON_ID_KEY;
-
-    // Used for specific use case (for example, a UsableItem can disable clicks from inventory)
-    private static NamespacedKey CLICKABLE_ON_INVENTORY_KEY;
-
-    /**
-     * We initialize a Map and instead of registering events for each button created, we only register 1 event,
-     * and when the event is triggered we retrieve the Action corresponding to the id of the clicked Button
-     */
-    protected static Map<Integer, Action> buttonIdActionMap = new HashMap<>();
 
     /**
      * This generic class is used to create a {@link Button} in the simplest way, using a Builder Pattern.
@@ -63,6 +50,10 @@ public class Button {
          * Display name color
          */
         protected Color color;
+
+        /** Displayed lore color */
+        protected Color loreColor;
+
         /**
          * Item description
          */
@@ -76,6 +67,9 @@ public class Button {
          */
         protected Action action;
 
+        /** Whether to show item attributes like attack damage, armor, etc. */
+        protected boolean showItemAttributes;
+
         /**
          * Initializes a {@link GenericBuilder} with the {@link Material} as the only mandatory feature that a {@link Button} will use.
          * Other features are optional, and depends on what usage the user wants to create for his {@link Button}.
@@ -84,6 +78,7 @@ public class Button {
         public GenericBuilder(Material material) {
             this.material = material;
             this.isEnchanted = false;
+            this.showItemAttributes = false;
         }
 
         /**
@@ -128,6 +123,18 @@ public class Button {
         }
 
         /**
+         * Adds a description to the {@link T} Builder configuration.
+         * @param lore The description that will be shown for an {@link ItemStack}
+         * @param color The color that will be applied to the lore
+         * @return The updated {@link T} Builder
+         */
+        public T withLore(List<String> lore, Color color) {
+            this.lore = lore;
+            this.loreColor = color;
+            return this.self();
+        }
+
+        /**
          * Specifies the usage of the enchanted effect into the {@link T} Builder configuration.
          * @param isEnchanted Specifies if the {@link ItemStack} will have an enchantment effect displayed on it.
          * @return The updated {@link T} Builder
@@ -148,11 +155,20 @@ public class Button {
         }
 
         /**
+         * Specifies that item attributes like attack damage, armor, enchantments, etc. should be hidden.
+         * @return The updated {@link T} Builder
+         */
+        public T hideItemAttributes() {
+            this.showItemAttributes = false;
+            return this.self();
+        }
+
+        /**
          * Builds the final {@link Button} instance from the configuration defined by the user in this {@link GenericBuilder}.
          * @return The {@link Button} instance built with its proper configuration
          */
         public Button build() {
-            return new Button(this.material, this.displayName, this.color, this.lore, this.isEnchanted, this.action);
+            return new Button(this.material, this.displayName, this.color, this.loreColor, this.lore, this.isEnchanted, this.action, this.showItemAttributes);
         }
     }
 
@@ -172,24 +188,41 @@ public class Button {
         }
     }
 
-    // In game item name/ID
+    /** Makes a unique ID everytime a Button is created. */
+    private static int buttonIndexing = 0;
+    /** Used for creating a custom attribute where we can put the Button ID in. */
+    private static NamespacedKey BUTTON_ID_KEY;
+
+    /** Used for specific use case (for example, a UsableItem can disable clicks from inventory) */
+    private static NamespacedKey CLICKABLE_ON_INVENTORY_KEY;
+    /**
+     * We initialize a Map and instead of registering events for each button created, we only register 1 event,
+     * and when the event is triggered we retrieve the Action corresponding to the id of the clicked Button
+     */
+    protected static Map<Integer, Action> buttonIdActionMap = new HashMap<>();
+    /** Whether to show item attributes like attack damage, armor, etc. */
+    protected final boolean showItemAttributes;
+
+    /** In game item name/ID */
     private Material material;
-    // Custom item name that will be displayed
+    /** Custom item name that will be displayed */
     private String displayName;
-    // Display name color
+    /** Display name color */
     private Color color;
-    // Item description
+    /** Displayed lore color */
+    protected Color loreColor;
+    /** Item description */
     private List<String> lore;
-    // Enchantment glint effect ON or OFF
+    /** Enchantment glint effect ON or OFF */
     private boolean isEnchanted;
-    // Custom action on a Button click
+    /** Custom action on a Button click */
     private final Action action;
-    // Unique ID assigned to the Button
+    /** Unique ID assigned to the Button */
     private final int buttonID;
-    // The ItemStack contained in that Button
-    private ItemStack itemStack;
-    // The ItemMeta contained in that Button
-    private ItemMeta itemMeta;
+    /** The ItemStack contained in that Button */
+    protected ItemStack itemStack;
+    /** The ItemMeta contained in that Button */
+    protected ItemMeta itemMeta;
 
     /**
      * The plugin instance, used to register events
@@ -201,14 +234,16 @@ public class Button {
      * every attribute of this class. Instead, the user has to use the {@link GenericBuilder} class because it allows him to decide whenever he
      * wants to use an option for his {@link Button}.
      *
-     * @param material    The in game item ID
-     * @param displayName Custom name that will be displayed for an {@link ItemStack}
-     * @param color       The color that will be applied on the displayed name
-     * @param lore        The description that will be shown for an {@link ItemStack}
-     * @param isEnchanted Specifies if the {@link ItemStack} will have an enchantment effect displayed on it
-     * @param action      Specifies the action to be triggered on a {@link Button} click
+     * @param material           The in game item ID
+     * @param displayName        Custom name that will be displayed for an {@link ItemStack}
+     * @param color              The color that will be applied on the displayed name
+     * @param loreColor          The color that will be applied to the lore
+     * @param lore               The description that will be shown for an {@link ItemStack}
+     * @param isEnchanted        Specifies if the {@link ItemStack} will have an enchantment effect displayed on it
+     * @param action             Specifies the action to be triggered on a {@link Button} click
+     * @param showItemAttributes Whether to show item attributes like attack damage, armor, etc.
      */
-    protected Button(Material material, String displayName, Color color, List<String> lore, boolean isEnchanted, Action action) {
+    protected Button(Material material, String displayName, Color color, Color loreColor, List<String> lore, boolean isEnchanted, Action action, boolean showItemAttributes) {
 
         this.material = material;
         this.itemStack = ItemStack.of(material);
@@ -219,9 +254,11 @@ public class Button {
         this.displayName = displayName;
 
         this.color = color;
+        this.loreColor = loreColor;
 
         this.lore = lore;
         this.isEnchanted = isEnchanted;
+        this.showItemAttributes = showItemAttributes;
         this.action = action;
 
         // Assign a unique ID to this Button.
@@ -242,6 +279,17 @@ public class Button {
             CLICKABLE_ON_INVENTORY_KEY = new NamespacedKey(plugin, "clickable_on_inventory");
         }
 
+        if(! this.showItemAttributes) {
+            this.itemMeta.addItemFlags(ItemFlag.HIDE_ARMOR_TRIM);
+            this.itemMeta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
+            this.itemMeta.addItemFlags(ItemFlag.HIDE_DYE);
+            this.itemMeta.addItemFlags(ItemFlag.HIDE_DESTROYS);
+            this.itemMeta.addItemFlags(ItemFlag.HIDE_PLACED_ON);
+            this.itemMeta.addItemFlags(ItemFlag.HIDE_ENCHANTS);
+            this.itemMeta.addItemFlags(ItemFlag.HIDE_STORED_ENCHANTS);
+            this.itemMeta.addItemFlags(ItemFlag.HIDE_UNBREAKABLE);
+        }
+
         // Inject the BUTTON_ID_KEY and CLICKABLE_ON_INVENTORY_KEY into the ItemMeta
         this.itemMeta.getPersistentDataContainer().set(BUTTON_ID_KEY, PersistentDataType.INTEGER, this.buttonID);
         // 'true' means we want to enable clicks from inventory by default
@@ -256,8 +304,10 @@ public class Button {
 
         // Apply the displayName if specified by the user, then apply the color if specified by the user.
         this.itemMeta.customName(this.displayName != null ? Component.text(this.displayName).color(this.color != null ? TextColor.color(this.color.asRGB()) : null) : null);
-        // If the lore is specified by the user, transform this.lore (List<String>) into a List of Component (List<Component)
-        List<Component> componentList = this.lore != null ? Lists.transform(this.lore, Component::text) : null;
+        // If the lore is specified by the user, transform this.lore (List<String>) into a List of Component (List<Component) (And add the lore color if not null)
+        List<Component> componentList = this.lore != null ?
+                Lists.transform(this.lore, (elem) -> Component.text(elem).color(loreColor != null ? TextColor.color(loreColor.asRGB()) : null))
+                : null;
 
         // Pass the newly created List<Component> as an argument.
         this.itemMeta.lore(componentList);
@@ -499,7 +549,7 @@ public class Button {
                     There is a special case where in creative game mode, event.getClick() will
                     always return 'CREATIVE'
                      */
-                    case ClickType.LEFT, ClickType.RIGHT, ClickType.CREATIVE, ClickType.SHIFT_LEFT, ClickType.SHIFT_RIGHT -> action.execute(player, itemStack);
+                    case ClickType.LEFT, ClickType.RIGHT, ClickType.CREATIVE, ClickType.SHIFT_LEFT, ClickType.SHIFT_RIGHT -> action.execute(player, event);
                 }
             }
         }

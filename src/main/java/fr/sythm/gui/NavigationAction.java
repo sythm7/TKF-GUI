@@ -1,7 +1,7 @@
 package fr.sythm.gui;
 
 import org.bukkit.entity.Player;
-import org.bukkit.inventory.ItemStack;
+import org.bukkit.event.Event;
 
 /**
  * Allows the user to add an action for a {@link Button} that makes the player navigate to another inventory when the button is clicked.
@@ -21,10 +21,9 @@ public class NavigationAction implements Action {
     /**
      * This method will automatically be executed as the button click event occurs
      * @param player The {@link Player} to perform the button click
-     * @param itemStack The {@link ItemStack} which was clicked on
      */
     @Override
-    public void execute(Player player, ItemStack itemStack) {
+    public void execute(Player player, Event event) {
         player.openInventory(this.nextPage.getInventory());
     }
 }
