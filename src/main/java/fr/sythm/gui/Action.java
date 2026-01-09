@@ -11,6 +11,7 @@ public interface Action {
     /**
      * Executes the custom action that will be specified inside
      * @param player The {@link Player} who triggered the button click event
+     * @param event The {@link Event} that triggered the action
      */
     void execute(Player player, Event event);
 }

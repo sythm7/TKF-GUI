@@ -80,6 +80,10 @@ public class Page {
         this.inventory.setItem(pos, button.getItemStack());
     }
 
+    /** Allows the user to update a {@link Button} already contained in this {@link Page}.
+     * This method updates the {@link Button} item in the {@link Inventory} in case it was changed.
+     * @param button The {@link Button} to update
+     */
     public void updateButton(Button button) {
 
         Integer pos = buttonMap.get(button);
