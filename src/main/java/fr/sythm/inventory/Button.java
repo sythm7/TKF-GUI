@@ -1,6 +1,8 @@
-package fr.sythm.gui;
+package fr.sythm.inventory;
 
 import com.google.common.collect.Lists;
+import fr.sythm.inventory.action.Action;
+import fr.sythm.inventory.action.NavigationAction;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.TextColor;
 import org.bukkit.*;

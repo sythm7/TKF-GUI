@@ -1,5 +1,7 @@
-package fr.sythm.gui;
+package fr.sythm.inventory.action;
 
+import fr.sythm.inventory.Button;
+import fr.sythm.inventory.Page;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Event;
 

@@ -1,5 +1,7 @@
-package fr.sythm.gui;
+package fr.sythm.inventory;
 
+import fr.sythm.inventory.action.Action;
+import fr.sythm.inventory.action.NavigationAction;
 import org.bukkit.Color;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
@@ -11,8 +13,12 @@ import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.server.PluginDisableEvent;
+import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
+
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 /**
@@ -40,6 +46,9 @@ public class UsableItem extends Button {
 
         /** Specifies if the item is unbreakable */
         private boolean isUnbreakable = true;
+
+        /** Map of attribute modifiers to be applied to the item */
+        private Map<Attribute, AttributeModifier> attributeModifierMap;
 
         /**
          * Initializes a {@link Builder} with the {@link Material} as the only mandatory feature that a {@link UsableItem} will use.
@@ -100,8 +109,22 @@ public class UsableItem extends Button {
          * @param isUnbreakable true if the item is unbreakable, false otherwise
          * @return The updated {@link Builder}
          */
-        public Builder isUnbreakable(boolean isUnbreakable) {
+        public Builder setUnbreakable(boolean isUnbreakable) {
             this.isUnbreakable = isUnbreakable;
+            return this;
+        }
+
+        /** Adds an attribute modifier to the item
+         *
+         * @param attribute The attribute to modify
+         * @param attributeModifier The modifier to apply
+         * @return The updated {@link Builder}
+         */
+        public Builder addAttributeModifier(Attribute attribute, AttributeModifier attributeModifier) {
+            if(this.attributeModifierMap == null) {
+                this.attributeModifierMap = new HashMap<>();
+            }
+            this.attributeModifierMap.put(attribute, attributeModifier);
             return this;
         }
 
@@ -112,7 +135,7 @@ public class UsableItem extends Button {
         @Override
         public UsableItem build() {
             return new UsableItem(this.material, this.displayName, this.color, this.loreColor, this.lore, this.isEnchanted, this.action,
-                    this.clickableOnInventory, this.showItemAttributes, this.itemArmor, this.itemAttackDamage, this.itemAttackSpeed, this.isUnbreakable);
+                    this.clickableOnInventory, this.showItemAttributes, this.itemArmor, this.itemAttackDamage, this.itemAttackSpeed, this.isUnbreakable, this.attributeModifierMap);
         }
     }
 
@@ -145,13 +168,14 @@ public class UsableItem extends Button {
      * @param action               Specifies the action to be triggered on a {@link UsableItem} click
      * @param clickableOnInventory Specifies if the {@link UsableItem} can be clicked through the inventory
      * @param showItemAttributes   Specifies if the item attributes (attack damage, armor, enchantments, etc.) will be shown in the item lore
-     * @param itemArmor           The armor points that will be added to the item
-     * @param itemAttackDamage    The attack damage that will be added to the item
-     * @param itemAttackSpeed     The attack speed that will be added to the item
-     * @param isUnbreakable       Specifies if the item is unbreakable
+     * @param itemArmor            The armor points that will be added to the item
+     * @param itemAttackDamage     The attack damage that will be added to the item
+     * @param itemAttackSpeed      The attack speed that will be added to the item
+     * @param isUnbreakable        Specifies if the item is unbreakable
+     * @param attributeModifierMap Map of attribute modifiers to be applied to the item
      */
     private UsableItem(Material material, String displayName, Color color, Color loreColor, List<String> lore, boolean isEnchanted, Action action,
-                       boolean clickableOnInventory, boolean showItemAttributes, Double itemArmor, Double itemAttackDamage, Double itemAttackSpeed, boolean isUnbreakable) {
+                       boolean clickableOnInventory, boolean showItemAttributes, Double itemArmor, Double itemAttackDamage, Double itemAttackSpeed, boolean isUnbreakable, Map<Attribute, AttributeModifier> attributeModifierMap) {
 
         super(material, displayName, color, loreColor, lore, isEnchanted, action, showItemAttributes);
 
@@ -165,23 +189,33 @@ public class UsableItem extends Button {
             // Disable the Action being executed in the InventoryClickEvent for this UsableItem
             this.disableInventoryClick();
         }
-
-        if(itemAttackSpeed != null) {
+        /* Set the custom item attributes if any are specified */
+        if(attributeModifierMap != null) {
+            for(Map.Entry<Attribute, AttributeModifier> entry : attributeModifierMap.entrySet()) {
+                this.itemMeta.addAttributeModifier(entry.getKey(), entry.getValue());
+            }
+        }
+        /* Add the attack damage attribute if specified */
+        if(itemAttackDamage != null) {
             this.itemMeta.addAttributeModifier(Attribute.ATTACK_DAMAGE,
                     new AttributeModifier(Objects.requireNonNull(NamespacedKey.fromString("generic.attack_damage")), itemAttackDamage, AttributeModifier.Operation.ADD_NUMBER));
         }
+        /* Add the armor attribute if specified */
         if(itemArmor != null) {
             this.itemMeta.addAttributeModifier(Attribute.ARMOR,
                     new AttributeModifier(Objects.requireNonNull(NamespacedKey.fromString("generic.armor")), itemArmor, AttributeModifier.Operation.ADD_NUMBER));
         }
+        /* Add the attack speed attribute if specified */
         if(itemAttackSpeed != null) {
             this.itemMeta.addAttributeModifier(Attribute.ATTACK_SPEED,
                     new AttributeModifier(Objects.requireNonNull(NamespacedKey.fromString("generic.armor")), itemAttackSpeed, AttributeModifier.Operation.ADD_NUMBER));
         }
+        /* Make the item unbreakable if specified */
         if(isUnbreakable) {
             this.itemMeta.setUnbreakable(true);
         }
 
+        /* Update the ItemStack's ItemMeta */
         this.itemStack.setItemMeta(this.itemMeta);
     }
 
@@ -192,6 +226,31 @@ public class UsableItem extends Button {
      */
     public void give(Player player, int inventoryPos) {
         player.getInventory().setItem(inventoryPos, this.getItemStack());
+    }
+
+    /** Set the {@link UsableItem} in the specified equipment slot of the selected {@link Player}
+     *
+     * @param player The selected {@link Player}
+     * @param equipmentSlot The equipment slot which the item will be put in
+     */
+    public void setEquipmentSlot(Player player, EquipmentSlot equipmentSlot) {
+        player.getInventory().setItem(equipmentSlot, this.itemStack);
+    }
+
+    /** Set the {@link UsableItem} in the hand of the selected {@link Player}
+     *
+     * @param player The selected {@link Player}
+     */
+    public void setHand(Player player) {
+        player.getInventory().setItem(EquipmentSlot.HAND, this.itemStack);
+    }
+
+    /** Set the {@link UsableItem} in the off-hand of the selected {@link Player}
+     *
+     * @param player The selected {@link Player}
+     */
+    public void setOffHand(Player player) {
+        player.getInventory().setItem(EquipmentSlot.OFF_HAND, this.itemStack);
     }
 
     /**

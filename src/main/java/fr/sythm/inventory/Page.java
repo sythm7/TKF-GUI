@@ -1,4 +1,4 @@
-package fr.sythm.gui;
+package fr.sythm.inventory;
 
 import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
