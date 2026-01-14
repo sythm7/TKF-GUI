@@ -1,37 +1,41 @@
 package fr.sythm.scoreboard;
 
 import io.papermc.paper.scoreboard.numbers.NumberFormat;
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.TextColor;
 import org.bukkit.Bukkit;
 import org.bukkit.Color;
 import org.bukkit.entity.Player;
-import org.bukkit.scoreboard.Criteria;
-import org.bukkit.scoreboard.DisplaySlot;
-import org.bukkit.scoreboard.Objective;
-import org.bukkit.scoreboard.Scoreboard;
+import org.bukkit.scoreboard.*;
 
 import java.util.List;
 
+/** A simple scoreboard manager that allows to create a sidebar scoreboard with multiple lines
+ * and an optional below name objective
+ */
 public class SimpleScoreboard {
 
+    /** The Bukkit scoreboard instance */
     private final Scoreboard scoreboard;
 
+    /** The criteria of the sidebar objective */
     private final Criteria criteria;
 
-    private final Component title;
+    /** The title of the sidebar objective */
+    private final Line title;
 
+    /** The sidebar objective */
     private Objective sidebar;
 
+    /** The below name objective */
     private Objective belowName;
 
-    private final List<String> lines;
+    /** The lines of the scoreboard */
+    private final List<Line> lines;
 
     /** Creates a simple scoreboard with a sidebar objective using dummy criteria
      * @param title The display name of the sidebar objective
      * @param lines The lines to display on the scoreboard
      */
-    public SimpleScoreboard(Component title, List<String> lines) {
+    public SimpleScoreboard(Line title, List<Line> lines) {
         this(Criteria.DUMMY, title, lines);
     }
 
@@ -40,7 +44,7 @@ public class SimpleScoreboard {
      * @param title The display name of the sidebar objective
      * @param lines The lines to display on the scoreboard
      */
-    public SimpleScoreboard(Criteria criteria, Component title, List<String> lines) {
+    public SimpleScoreboard(Criteria criteria, Line title, List<Line> lines) {
         this.criteria = criteria;
         this.title = title;
         this.lines = lines;
@@ -52,7 +56,7 @@ public class SimpleScoreboard {
     /** Sets the lines of the scoreboard, replacing the previous ones if any
      * @param lines The lines to set on the scoreboard
      */
-    public void setLines(List<String> lines) {
+    public void setLines(List<Line> lines) {
 
         // Unregister the previous sidebar objective if it exists
         if(this.sidebar != null) {
@@ -60,11 +64,14 @@ public class SimpleScoreboard {
         }
 
         // Create a new sidebar objective
-        this.sidebar = this.scoreboard.registerNewObjective("_tkf_sidebar", criteria, title);
+        this.sidebar = this.scoreboard.registerNewObjective("_tkf_sidebar", criteria, title.asComponent());
         int scoreID = lines.size() - 1;
         // Set each line with a decreasing score to have them in the correct order
-        for(String line : lines) {
-            this.sidebar.getScore(line).setScore(scoreID--);
+        for(Line line : lines) {
+
+            Score score = this.sidebar.getScore(String.valueOf(scoreID));
+            score.setScore(scoreID--);
+            score.customName(line.asComponent());
         }
         // Make the numbers disappear from the scoreboard
         this.sidebar.numberFormat(NumberFormat.blank());
@@ -81,20 +88,21 @@ public class SimpleScoreboard {
 
     /** Replaces a specific line of the scoreboard
      * @param lineID The ID of the line to replace
+     * @param newLine The new line to set
      */
-    public void replaceLine(int lineID) {
-        this.sidebar.getScore(this.lines.get(lines.size() - 1 - lineID));
+    public void replaceLine(int lineID, Line newLine) {
+        this.sidebar.getScore(String.valueOf(this.lines.size() - 1 - lineID)).customName(newLine.asComponent());
     }
 
     /** Sets the below name objective of the scoreboard, replacing the previous one if any
      * @param criteria The criteria of the below name objective
      * @param information The display name of the below name objective
      */
-    public void setBelowName(Criteria criteria, Component information) {
+    public void setBelowName(Criteria criteria, Line information) {
         if(this.belowName != null) {
             this.belowName.unregister();
         }
-        this.belowName = this.scoreboard.registerNewObjective("_tkf_below_name", criteria, information);
+        this.belowName = this.scoreboard.registerNewObjective("_tkf_below_name", criteria, information.asComponent());
         this.belowName.setDisplaySlot(DisplaySlot.BELOW_NAME);
     }
 
@@ -102,6 +110,13 @@ public class SimpleScoreboard {
      * replacing the previous below name objective if any
      */
     public void setBelowNameHealth() {
-        this.setBelowName(Criteria.HEALTH, Component.text("❤").color(TextColor.color(Color.RED.asRGB())));
+        this.setBelowName(Criteria.HEALTH, new Line("❤", Color.RED));
+    }
+
+    /** Gets the lines of the scoreboard
+     * @return The lines of the scoreboard
+     */
+    public List<Line> getLines() {
+        return lines;
     }
 }

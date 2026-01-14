@@ -106,7 +106,7 @@ public class UsableItem extends Button {
 
         /** Specifies if the item is unbreakable
          *
-         * @param isUnbreakable true if the item is unbreakable, false otherwise
+         * @param isUnbreakable {@code true} if the item is unbreakable, {@code false} otherwise
          * @return The updated {@link Builder}
          */
         public Builder setUnbreakable(boolean isUnbreakable) {
@@ -262,7 +262,7 @@ public class UsableItem extends Button {
     private static class UsableItemListener implements Listener {
 
         /**
-         * Handles the events related to item utilisation (left-click and right-click) by a {@link Player}
+         * Handles the events related to item utilization (left-click and right-click) by a {@link Player}
          * @param event The {@link PlayerInteractEvent} which is triggered by a {@link Player}
          */
         @EventHandler

@@ -281,6 +281,7 @@ public class Button {
             CLICKABLE_ON_INVENTORY_KEY = new NamespacedKey(plugin, "clickable_on_inventory");
         }
 
+        // Hide item attributes if the user specified it
         if(! this.showItemAttributes) {
             this.itemMeta.addItemFlags(ItemFlag.HIDE_ARMOR_TRIM);
             this.itemMeta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
@@ -294,12 +295,13 @@ public class Button {
 
         // Inject the BUTTON_ID_KEY and CLICKABLE_ON_INVENTORY_KEY into the ItemMeta
         this.itemMeta.getPersistentDataContainer().set(BUTTON_ID_KEY, PersistentDataType.INTEGER, this.buttonID);
-        // 'true' means we want to enable clicks from inventory by default
+        // '{@code true}' means we want to enable clicks from inventory by default
         this.itemMeta.getPersistentDataContainer().set(CLICKABLE_ON_INVENTORY_KEY, PersistentDataType.BOOLEAN, true);
 
         // Update the ItemMeta contained in this ItemStack
         this.itemStack.setItemMeta(this.itemMeta);
 
+        // If an action was specified by the user, we put it into the HashMap with its corresponding buttonID
         if(this.action != null) {
             buttonIdActionMap.put(this.buttonID, this.action);
         }
@@ -377,7 +379,7 @@ public class Button {
      * Enables or disables the enchantment effect on this {@link Button}
      * You have to call {@link Page#updateButton(Button)} after calling this method,
      * otherwise you won't see any change.
-     * @param isEnchanted true for showing the enchantment effect, false otherwise
+     * @param isEnchanted set to {@code true} for showing the enchantment effect, {@code false} otherwise
      */
     public void setEnchanted(boolean isEnchanted) {
         this.itemMeta.setEnchantmentGlintOverride(isEnchanted);
@@ -419,7 +421,7 @@ public class Button {
 
     /**
      * Gets the enchanted effect on the {@link Button}
-     * @return true if the {@link Button} has an enchanted effect, false otherwise
+     * @return {@code true} if the {@link Button} has an enchanted effect, {@code false} otherwise
      */
     public boolean isEnchanted() {
         return isEnchanted;
@@ -438,7 +440,7 @@ public class Button {
      * Most useful for the subclasses (ref {@link UsableItem})
      */
     public void disableInventoryClick() {
-        // 'false' means we want to disable clicks from inventory
+        // true means we want to disable clicks from inventory
         this.itemMeta.getPersistentDataContainer().set(CLICKABLE_ON_INVENTORY_KEY, PersistentDataType.BOOLEAN, false);
         this.itemStack.setItemMeta(this.itemMeta);
     }
@@ -447,7 +449,7 @@ public class Button {
      * Allows the {@link Button} to be clicked through the inventory
      */
     public void enableInventoryClick() {
-        // 'true' means we want to enable clicks from inventory
+        // true means we want to enable clicks from inventory
         this.itemMeta.getPersistentDataContainer().set(CLICKABLE_ON_INVENTORY_KEY, PersistentDataType.BOOLEAN, true);
         this.itemStack.setItemMeta(this.itemMeta);
     }
@@ -497,7 +499,7 @@ public class Button {
      * When an event is triggered, it checks if the clicked item was indeed the specified {@link Button}
      * and if yes, executes the action specified by the user.
      */
-    public static class ButtonListener implements Listener {
+    private static class ButtonListener implements Listener {
 
         /**
          * Creates a new {@link ButtonListener}.
@@ -629,7 +631,7 @@ public class Button {
     /**
      * Redefined in case {@link java.util.Map} is used later, to prevent comparison problems inside the {@link java.util.Map}
      * @param o Object to be compared with the {@link Button}
-     * @return true if the two objects are the same, otherwise false
+     * @return {@code true} if the two objects are the same, otherwise {@code false}
      */
     @Override
     public boolean equals(Object o) {

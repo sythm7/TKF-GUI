@@ -1,7 +1,9 @@
 package fr.sythm.inventory;
 
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.TextColor;
 import org.bukkit.Bukkit;
+import org.bukkit.Color;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
@@ -12,6 +14,8 @@ import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.jetbrains.annotations.NotNull;
+import org.jspecify.annotations.NonNull;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -20,14 +24,26 @@ import java.util.Map;
  * This class is used as a UI manager. Its function is to create an {@link Inventory}, add some {@link Button} into it,
  * and make it act as a real interface by blocking some user interactions and adding new user interactions.
  */
-public class Page {
+public class Page implements InventoryHolder {
 
+    /** The plugin instance needed for registering events
+     */
     private static Plugin plugin;
 
+    /** The title of the inventory
+     */
     private final String title;
 
+    /** The color of the title
+     */
+    private Color titleColor;
+
+    /** The number of rows of the inventory
+     */
     private final int rowCount;
 
+    /** The inventory managed by this Page
+     */
     private final Inventory inventory;
 
     /**
@@ -40,13 +56,24 @@ public class Page {
      */
     private final Map<Button, Integer> buttonMap;
 
-
     /**
-     * Initialize an empty {@link Page} with the specified title and row count
-     * @param title The title that will be displayed on top of the opened {@link Inventory}
-     * @param rowCount The number of rows that will be displayed in the {@link Inventory}
+     * Initialize an empty {@link Page} with the specified title and row count.
+     *
+     * @param title      The title that will be displayed on top of the opened {@link Inventory}
+     * @param rowCount   The number of rows that will be displayed in the {@link Inventory}
      */
     public Page(String title, int rowCount) {
+        this(title, rowCount, null);
+    }
+
+    /**
+     * Initialize an empty {@link Page} with the specified title, row count and title color.
+     *
+     * @param title      The title that will be displayed on top of the opened {@link Inventory}
+     * @param rowCount   The number of rows that will be displayed in the {@link Inventory}
+     * @param titleColor The color of the title text
+     */
+    public Page(String title, int rowCount, Color titleColor) {
 
         /*
          * Retrieve the plugin instance by finding from which plugin this class is executed, then register all the Page events.
@@ -59,7 +86,7 @@ public class Page {
         this.title = title;
         this.rowCount = rowCount;
         // Inventory size isn't counted as rows here but as number of Inventory slots, so it's rows * columns.
-        this.inventory = Bukkit.createInventory(new PageHolder(), rowCount * COLUMN_COUNT, Component.text(this.title));
+        this.inventory = Bukkit.createInventory(this, rowCount * COLUMN_COUNT, Component.text(this.title).color(titleColor != null ? TextColor.color(titleColor.asRGB()) : null));
         this.buttonMap = new HashMap<>();
     }
 
@@ -101,8 +128,8 @@ public class Page {
      * For example, allows the user to open an {@link Inventory} after having built a {@link Page}.
      * @return The {@link Inventory} contained in this {@link Page}
      */
-    public Inventory getInventory() {
-        return inventory;
+    public @NonNull Inventory getInventory() {
+        return this.inventory;
     }
 
 
@@ -124,10 +151,10 @@ public class Page {
         private void onInventoryClickEvent(InventoryClickEvent event){
 
             /*
-            If the holder is an instance of PageHolder, that means we're dealing with a custom inventory
+            If the holder is an instance of Page, that means we're dealing with a custom inventory
             built with this library.
              */
-            if(! (event.getInventory().getHolder() instanceof PageHolder)) {
+            if(! (event.getInventory().getHolder() instanceof Page)) {
                 return;
             }
 
@@ -137,7 +164,7 @@ public class Page {
             }
 
             // If the clicked inventory is not the Player's inventory, that means the Page was clicked on.
-            // We cancel that event to prevent items from being moved in or out the Page. Shift click is also cancelled.
+            // We cancel that event to prevent items from being moved in or out the Page. Shift click is also canceled.
             if(! event.getClickedInventory().equals(event.getWhoClicked().getInventory())) {
                 event.setCancelled(true);
             } else {
@@ -155,12 +182,13 @@ public class Page {
         private void onInventoryDragEvent(InventoryDragEvent event){
 
             /*
-            If the holder is an instance of PageHolder, that means we're dealing with a custom inventory
+            If the holder is an instance of Page, that means we're dealing with a custom inventory
             built with this library, so we cancel the Drag event.
              */
-            if(! (event.getInventory().getHolder() instanceof PageHolder)) {
+            if(! (event.getInventory().getHolder() instanceof Page)) {
                 return;
             }
+
             event.setCancelled(true);
         }
 
@@ -173,18 +201,6 @@ public class Page {
         public void onPluginDisable(PluginDisableEvent event) {
             // Unregister all events related to this Listener
             HandlerList.unregisterAll(this);
-        }
-    }
-
-    /**
-     * This class is used as a better way to recognize when a {@link Page} event is triggered
-     * by checking if the opened inventory has an instance of {@link PageHolder} instead of comparing inventories title names.
-     */
-    private static class PageHolder implements InventoryHolder {
-
-        @Override
-        public Inventory getInventory() {
-            return null;
         }
     }
 }

@@ -6,7 +6,7 @@
 
     <groupId>fr.sythm</groupId>
     <artifactId>tkf-gui</artifactId>
-    <version>1.4</version>
+    <version>1.5</version>
 
     <properties>
         <maven.compiler.source>21</maven.compiler.source>
