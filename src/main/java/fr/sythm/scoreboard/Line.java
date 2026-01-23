@@ -1,8 +1,13 @@
 package fr.sythm.scoreboard;
 
+import io.papermc.paper.registry.data.dialog.action.DialogAction;
+import io.papermc.paper.registry.data.dialog.action.DialogActionCallback;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TextComponent;
+import net.kyori.adventure.text.event.ClickCallback;
+import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.format.TextColor;
+import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.Color;
 
 /** Represents a line of text (with or without colors/multiple colors)
@@ -53,6 +58,11 @@ public class Line {
         this.component = this.component.append(Component.text(words).color(
                 color != null ? TextColor.color(color.asRGB()) : null)
         );
+        return this;
+    }
+
+    public Line decorate(TextDecoration... decorations) {
+        this.component.decorate(decorations);
         return this;
     }
 

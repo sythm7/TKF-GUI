@@ -101,6 +101,7 @@ public class Page implements InventoryHolder {
             throw new IndexOutOfBoundsException("Button position is out of range. " + pos + " >= " + rowCount * COLUMN_COUNT);
         }
         this.buttonMap.put(button, pos);
+        button.setContainingPage(this);
 
         // Add the item contained in the Button into the Inventory
         this.inventory.setItem(pos, button.getItemStack());
@@ -116,6 +117,11 @@ public class Page implements InventoryHolder {
 
         if(pos == null) {
             plugin.getSLF4JLogger().warn("The button '{}' is not in the page '{}'.", button.getDisplayName(), this.title);
+
+            for(Map.Entry<Button, Integer> entry : buttonMap.entrySet()) {
+                plugin.getSLF4JLogger().info(entry.getKey().getDisplayName().examinableName());
+            }
+
             return;
         }
 

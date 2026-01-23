@@ -2,7 +2,7 @@ package fr.sythm.inventory;
 
 import fr.sythm.inventory.action.Action;
 import fr.sythm.inventory.action.NavigationAction;
-import org.bukkit.Color;
+import net.kyori.adventure.text.TextComponent;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.attribute.Attribute;
@@ -15,7 +15,6 @@ import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.server.PluginDisableEvent;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
-
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -134,7 +133,7 @@ public class UsableItem extends Button {
          */
         @Override
         public UsableItem build() {
-            return new UsableItem(this.material, this.displayName, this.color, this.loreColor, this.lore, this.isEnchanted, this.action,
+            return new UsableItem(this.material, this.displayName, this.lore, this.isEnchanted, this.action,
                     this.clickableOnInventory, this.showItemAttributes, this.itemArmor, this.itemAttackDamage, this.itemAttackSpeed, this.isUnbreakable, this.attributeModifierMap);
         }
     }
@@ -161,8 +160,6 @@ public class UsableItem extends Button {
      *
      * @param material             The in game item ID
      * @param displayName          Custom name that will be displayed for an {@link ItemStack}
-     * @param color                The color that will be applied on the displayed name
-     * @param loreColor            The color that will be applied on the lore
      * @param lore                 The description that will be shown for an {@link ItemStack}
      * @param isEnchanted          Specifies if the {@link ItemStack} will have an enchantment effect displayed on it
      * @param action               Specifies the action to be triggered on a {@link UsableItem} click
@@ -174,10 +171,10 @@ public class UsableItem extends Button {
      * @param isUnbreakable        Specifies if the item is unbreakable
      * @param attributeModifierMap Map of attribute modifiers to be applied to the item
      */
-    private UsableItem(Material material, String displayName, Color color, Color loreColor, List<String> lore, boolean isEnchanted, Action action,
+    private UsableItem(Material material, TextComponent displayName, List<TextComponent> lore, boolean isEnchanted, Action action,
                        boolean clickableOnInventory, boolean showItemAttributes, Double itemArmor, Double itemAttackDamage, Double itemAttackSpeed, boolean isUnbreakable, Map<Attribute, AttributeModifier> attributeModifierMap) {
 
-        super(material, displayName, color, loreColor, lore, isEnchanted, action, showItemAttributes);
+        super(material, displayName, lore, isEnchanted, action, showItemAttributes);
 
         if(! initialized) {
             // Register the Listener common to every UsableItem. This operation is called only once.

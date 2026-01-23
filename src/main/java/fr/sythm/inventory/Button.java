@@ -3,7 +3,9 @@ package fr.sythm.inventory;
 import com.google.common.collect.Lists;
 import fr.sythm.inventory.action.Action;
 import fr.sythm.inventory.action.NavigationAction;
+import fr.sythm.scoreboard.Line;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.TextComponent;
 import net.kyori.adventure.text.format.TextColor;
 import org.bukkit.*;
 import org.bukkit.entity.Player;
@@ -24,6 +26,7 @@ import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import javax.annotation.Nullable;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -35,7 +38,7 @@ public class Button {
 
     /**
      * This generic class is used to create a {@link Button} in the simplest way, using a Builder Pattern.
-     * The purpose of this generic class is to be extended for a specific use case (see {@link Button.Builder} and {@link UsableItem.Builder})
+     * The purpose of this generic class is to be extended for a specific use case (see {@link Builder} and {@link UsableItem.Builder})
      * @param <T> The Builder inheriting {@link GenericBuilder}
      */
     protected static abstract class GenericBuilder<T extends  GenericBuilder<T>> {
@@ -47,19 +50,12 @@ public class Button {
         /**
          * Custom item name that will be displayed
          */
-        protected String displayName;
-        /**
-         * Display name color
-         */
-        protected Color color;
-
-        /** Displayed lore color */
-        protected Color loreColor;
+        protected TextComponent displayName;
 
         /**
          * Item description
          */
-        protected List<String> lore;
+        protected List<TextComponent> lore;
         /**
          * Enchantment glint effect ON or OFF
          */
@@ -98,7 +94,7 @@ public class Button {
          * @return The updated {@link T} Builder
          */
         public T withDisplayName(String displayName) {
-            this.displayName = displayName;
+            this.displayName = Component.text(displayName);
             return this.self();
         }
 
@@ -109,8 +105,37 @@ public class Button {
          * @return The updated {@link T} Builder
          */
         public T withDisplayName(String displayName, Color color) {
-            this.displayName = displayName;
-            this.color = color;
+            this.displayName = new Line(displayName, color).asComponent();
+            return this.self();
+        }
+
+        /**
+         * Adds a display name to the {@link T} Builder configuration.
+         * @param displayName Custom name that will be displayed for an {@link ItemStack}
+         * @return The updated {@link T} Builder
+         */
+        public T withDisplayName(Line displayName) {
+            this.displayName = displayName.asComponent();
+            return this.self();
+        }
+
+        /**
+         * Adds a description to the {@link T} Builder configuration.
+         * @param lines The description that will be shown for an {@link ItemStack}
+         * @return The updated {@link T} Builder
+         */
+        public T withLore(String... lines) {
+            this.lore = Lists.transform(Arrays.asList(lines), Component::text);
+            return this.self();
+        }
+
+        /**
+         * Adds a description to the {@link T} Builder configuration.
+         * @param lines The description that will be shown for an {@link ItemStack}
+         * @return The updated {@link T} Builder
+         */
+        public T withLore(Line... lines) {
+            this.lore = Lists.transform(Arrays.asList(lines), Line::asComponent);
             return this.self();
         }
 
@@ -119,20 +144,8 @@ public class Button {
          * @param lore The description that will be shown for an {@link ItemStack}
          * @return The updated {@link T} Builder
          */
-        public T withLore(List<String> lore) {
-            this.lore = lore;
-            return this.self();
-        }
-
-        /**
-         * Adds a description to the {@link T} Builder configuration.
-         * @param lore The description that will be shown for an {@link ItemStack}
-         * @param color The color that will be applied to the lore
-         * @return The updated {@link T} Builder
-         */
-        public T withLore(List<String> lore, Color color) {
-            this.lore = lore;
-            this.loreColor = color;
+        public T withLore(List<Line> lore) {
+            this.lore = Lists.transform(lore, Line::asComponent);
             return this.self();
         }
 
@@ -170,7 +183,7 @@ public class Button {
          * @return The {@link Button} instance built with its proper configuration
          */
         public Button build() {
-            return new Button(this.material, this.displayName, this.color, this.loreColor, this.lore, this.isEnchanted, this.action, this.showItemAttributes);
+            return new Button(this.material, this.displayName, this.lore, this.isEnchanted, this.action, this.showItemAttributes);
         }
     }
 
@@ -208,13 +221,9 @@ public class Button {
     /** In game item name/ID */
     private Material material;
     /** Custom item name that will be displayed */
-    private String displayName;
-    /** Display name color */
-    private Color color;
-    /** Displayed lore color */
-    protected Color loreColor;
+    private TextComponent displayName;
     /** Item description */
-    private List<String> lore;
+    private List<TextComponent> lore;
     /** Enchantment glint effect ON or OFF */
     private boolean isEnchanted;
     /** Custom action on a Button click */
@@ -225,7 +234,8 @@ public class Button {
     protected ItemStack itemStack;
     /** The ItemMeta contained in that Button */
     protected ItemMeta itemMeta;
-
+    /** The Page containing this Button, if any */
+    private Page containingPage;
     /**
      * The plugin instance, used to register events
      */
@@ -238,14 +248,12 @@ public class Button {
      *
      * @param material           The in game item ID
      * @param displayName        Custom name that will be displayed for an {@link ItemStack}
-     * @param color              The color that will be applied on the displayed name
-     * @param loreColor          The color that will be applied to the lore
      * @param lore               The description that will be shown for an {@link ItemStack}
      * @param isEnchanted        Specifies if the {@link ItemStack} will have an enchantment effect displayed on it
      * @param action             Specifies the action to be triggered on a {@link Button} click
      * @param showItemAttributes Whether to show item attributes like attack damage, armor, etc.
      */
-    protected Button(Material material, String displayName, Color color, Color loreColor, List<String> lore, boolean isEnchanted, Action action, boolean showItemAttributes) {
+    protected Button(Material material, TextComponent displayName, List<TextComponent> lore, boolean isEnchanted, Action action, boolean showItemAttributes) {
 
         this.material = material;
         this.itemStack = ItemStack.of(material);
@@ -254,9 +262,6 @@ public class Button {
 
         // Get the custom item name if specified by the user, otherwise retrieve the default item name
         this.displayName = displayName;
-
-        this.color = color;
-        this.loreColor = loreColor;
 
         this.lore = lore;
         this.isEnchanted = isEnchanted;
@@ -306,15 +311,12 @@ public class Button {
             buttonIdActionMap.put(this.buttonID, this.action);
         }
 
-        // Apply the displayName if specified by the user, then apply the color if specified by the user.
-        this.itemMeta.customName(this.displayName != null ? Component.text(this.displayName).color(this.color != null ? TextColor.color(this.color.asRGB()) : null) : null);
-        // If the lore is specified by the user, transform this.lore (List<String>) into a List of Component (List<Component) (And add the lore color if not null)
-        List<Component> componentList = this.lore != null ?
-                Lists.transform(this.lore, (elem) -> Component.text(elem).color(loreColor != null ? TextColor.color(loreColor.asRGB()) : null))
-                : null;
+        // Finally, we update the ItemMeta properties with the user specified options
+        this.itemMeta.customName(this.displayName);
 
-        // Pass the newly created List<Component> as an argument.
-        this.itemMeta.lore(componentList);
+        // Set the lore of the item using the list of Components
+        this.itemMeta.lore(this.lore);
+
         // Enable the enchanted effect on the item if this.isEnchanted is true, otherwise it won't change anything.
         this.itemMeta.setEnchantmentGlintOverride(this.isEnchanted);
         /*
@@ -357,8 +359,7 @@ public class Button {
     public void setDisplayName(String displayName, Color color) {
         this.itemMeta.customName(color != null ? Component.text(displayName).color(TextColor.color(color.asRGB())) : Component.text(displayName));
         this.itemStack.setItemMeta(this.itemMeta);
-        this.displayName = displayName;
-        this.color = color;
+        this.displayName = new Line(displayName, color).asComponent();
     }
 
     /**
@@ -367,12 +368,10 @@ public class Button {
      * otherwise you won't see any change.
      * @param lore The lore to be set
      */
-    public void setLore(List<String> lore) {
-
-        List<Component> componentList = Lists.transform(lore, Component::text);
-        this.itemMeta.lore(componentList);
+    public void setLore(List<Line> lore) {
+        this.lore = Lists.transform(lore, Line::asComponent);
+        this.itemMeta.lore(this.lore);
         this.itemStack.setItemMeta(this.itemMeta);
-        this.lore = lore;
     }
 
     /**
@@ -391,8 +390,8 @@ public class Button {
      * Gets the displayed name
      * @return displayed name
      */
-    public String getDisplayName() {
-        return displayName;
+    public TextComponent getDisplayName() {
+        return this.displayName;
     }
 
     /**
@@ -403,19 +402,12 @@ public class Button {
         return material;
     }
 
-    /**
-     * Gets the displayed name color
-     * @return The {@link Color}
-     */
-    public Color getColor() {
-        return color;
-    }
 
     /**
      * Gets the displayed lore
      * @return The lore
      */
-    public List<String> getLore() {
+    public List<TextComponent> getLore() {
         return lore;
     }
 
@@ -452,6 +444,22 @@ public class Button {
         // true means we want to enable clicks from inventory
         this.itemMeta.getPersistentDataContainer().set(CLICKABLE_ON_INVENTORY_KEY, PersistentDataType.BOOLEAN, true);
         this.itemStack.setItemMeta(this.itemMeta);
+    }
+
+    /**
+     * Gets the {@link Page} containing this {@link Button}, if any
+     * @return The containing {@link Page}, or null if there is none
+     */
+    @Nullable
+    public Page getContainingPage() {
+        return this.containingPage;
+    }
+
+    /** Sets the {@link Page} containing this {@link Button}
+     * @param page The containing {@link Page}
+     */
+    protected void setContainingPage(Page page) {
+        this.containingPage = page;
     }
 
     /**
@@ -629,7 +637,7 @@ public class Button {
 
 
     /**
-     * Redefined in case {@link java.util.Map} is used later, to prevent comparison problems inside the {@link java.util.Map}
+     * Redefined in case {@link Map} is used later, to prevent comparison problems inside the {@link Map}
      * @param o Object to be compared with the {@link Button}
      * @return {@code true} if the two objects are the same, otherwise {@code false}
      */
@@ -647,7 +655,7 @@ public class Button {
     }
 
     /**
-     * Redefined in case {@link java.util.Map} is used later, to prevent comparison problems inside the {@link java.util.Map}
+     * Redefined in case {@link Map} is used later, to prevent comparison problems inside the {@link Map}
      * @return The corresponding hashCode
      */
     @Override
